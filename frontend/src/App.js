@@ -1,34 +1,17 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import IncidentList from './components/IncidentList';
+import IncidentForm from './components/IncidentForm';
+import WebSocketUpdates from './components/WebSocketUpdates';
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <h1>Incident Collaboration Platform</h1>
+      <IncidentForm />
+      <IncidentList />
+      <WebSocketUpdates />
     </div>
   );
 }
 
 export default App;
-
-useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/incidents");
-    ws.onmessage = (event) => {
-        console.log("WebSocket message:", event.data);
-        // Optionally trigger data refresh here
-    };
-    return () => ws.close();
-}, []);

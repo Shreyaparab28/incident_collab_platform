@@ -1,16 +1,27 @@
-import { useEffect } from "react";
+import React, { useEffect, useState } from 'react';
 
-export default function WebSocketUpdates() {
+function WebSocketUpdates() {
+  const [message, setMessage] = useState("");
+
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8000/ws");
-
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("Real-time update:", data);
+    const ws = new WebSocket("ws://127.0.0.1:8000/ws/incidents/");
+    ws.onmessage = (event) => {
+      setMessage(event.data);
     };
-
-    return () => socket.close();
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+    return () => {
+      ws.close();
+    };
   }, []);
 
-  return <div>Listening for updates...</div>;
+  return (
+    <div>
+      <h2>Real-Time Updates</h2>
+      {message ? <p>{message}</p> : <p>No updates yet.</p>}
+    </div>
+  );
 }
+
+export default WebSocketUpdates;

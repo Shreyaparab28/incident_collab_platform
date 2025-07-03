@@ -1,20 +1,47 @@
-import { useState } from "react";
-import axios from "axios";
+import React, { useState } from 'react';
+import axios from 'axios';
 
-export default function IncidentForm() {
+const API_URL = "http://127.0.0.1:8000";
+
+function IncidentForm() {
   const [title, setTitle] = useState("");
-  const [description, setDesc] = useState("");
+  const [description, setDescription] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    axios.post("http://localhost:8000/incidents/", { title, description });
+    try {
+      await axios.post(`${API_URL}/incidents/incidents/`, { title, description });
+      setTitle("");
+      setDescription("");
+      alert("Incident created successfully!");
+    } catch (error) {
+      console.error("Error creating incident:", error);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
-      <input value={description} onChange={(e) => setDesc(e.target.value)} placeholder="Description" />
-      <button type="submit">Submit</button>
-    </form>
+    <div>
+      <h2>Create Incident</h2>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          placeholder="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+        <br />
+        <textarea
+          placeholder="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
+        />
+        <br />
+        <button type="submit">Create Incident</button>
+      </form>
+    </div>
   );
 }
+
+export default IncidentForm;
