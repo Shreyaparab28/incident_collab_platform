@@ -1,50 +1,87 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.db import models, schemas, session
-from typing import List
+from app.db import models, schemas, session as db_session
+from app.utils.realtime import publish_incident_event
+from app.utils.auth import get_current_user
 
 router = APIRouter()
 
-# Use consistent AsyncSession dependency
-get_db = session.get_db
+async def get_db():
+    async with db_session.async_session() as session:
+        yield session
 
-@router.get("/incidents/", response_model=List[schemas.Incident])
-async def get_all_incidents(db: AsyncSession = Depends(get_db)):
+@router.get("/", response_model=list[schemas.IncidentResponse])
+async def read_incidents(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Incident))
     incidents = result.scalars().all()
-    return incidents
+    return [schemas.IncidentResponse.model_validate(incident, from_attributes=True) for incident in incidents]
 
-@router.post("/incidents/", response_model=schemas.Incident)
-async def create_incident(incident: schemas.IncidentCreate, db: AsyncSession = Depends(get_db)):
-    db_incident = models.Incident(**incident.dict())
+@router.post("/", response_model=schemas.IncidentResponse)
+async def create_incident(
+    incident: schemas.IncidentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    db_incident = models.Incident(
+        title=incident.title,
+        description=incident.description,
+        status=incident.status,
+        created_by=current_user["username"],  # <= capture username here
+    )
     db.add(db_incident)
     await db.commit()
     await db.refresh(db_incident)
+
+    await publish_incident_event("create", {
+        "id": db_incident.id,
+        "title": db_incident.title,
+        "description": db_incident.description,
+        "status": db_incident.status,
+        "created_at": db_incident.created_at.isoformat(),
+        "created_by": db_incident.created_by,
+    })
     return db_incident
 
-@router.put("/incidents/{incident_id}", response_model=schemas.Incident)
+@router.put("/{incident_id}", response_model=schemas.IncidentResponse)
 async def update_incident(
     incident_id: int,
-    updated: schemas.IncidentCreate,
-    db: AsyncSession = Depends(get_db)
+    incident_in: schemas.IncidentCreate,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
     result = await db.execute(select(models.Incident).where(models.Incident.id == incident_id))
     incident = result.scalars().first()
     if not incident:
-        raise HTTPException(status_code=404, detail="Incident not found")
-    for key, value in updated.dict().items():
-        setattr(incident, key, value)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
+
+    incident.title = incident_in.title
+    incident.description = incident_in.description
+    incident.status = incident_in.status
+
     await db.commit()
     await db.refresh(incident)
-    return incident
 
-@router.delete("/incidents/{incident_id}")
-async def delete_incident(incident_id: int, db: AsyncSession = Depends(get_db)):
+    await publish_incident_event("update", {
+        "id": incident.id,
+        "title": incident.title,
+        "description": incident.description,
+        "status": incident.status,
+        "created_at": incident.created_at.isoformat(),
+        "created_by": incident.created_by,
+    })
+    return schemas.IncidentResponse.model_validate(incident, from_attributes=True)
+
+@router.delete("/{incident_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_incident(
+    incident_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
     result = await db.execute(select(models.Incident).where(models.Incident.id == incident_id))
     incident = result.scalars().first()
     if not incident:
-        raise HTTPException(status_code=404, detail="Incident not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     await db.delete(incident)
     await db.commit()
-    return {"message": "Incident deleted"}
+    await publish_incident_event("deleted", {"id": incident_id})

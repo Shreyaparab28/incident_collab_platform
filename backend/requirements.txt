@@ -3,3 +3,9 @@ uvicorn[standard]
 sqlalchemy
 asyncpg
 aioredis
+redis[async]
+alembic
+psycopg2-binary
+python-jose
+requests
+cryptography>=42.0.0

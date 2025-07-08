@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -12,18 +12,14 @@ class IncidentCreate(IncidentBase):
 
 class IncidentRead(IncidentBase):
     id: int
-    timestamp: datetime
-
-    class Config:
-        from_attributes = True  # For SQLAlchemy ORM mode in Pydantic v2
+    created_at: datetime
 
 class IncidentResponse(BaseModel):
     id: int
     title: str
     description: Optional[str]
     status: str
-    timestamp: datetime
+    created_at: datetime
 
-    class Config:
-        from_attributes = True
-	orm_mode = True
+class Config:
+        orm_mode = True

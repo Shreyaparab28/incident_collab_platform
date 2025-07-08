@@ -1,34 +1,43 @@
-from fastapi import FastAPI
-from fastapi import WebSocket
-from app.db.session import engine, Base
-from app.api.api_v1 import endpoints
-from app.api.api_v1.endpoints import incidents
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-import asyncio
-from app.api.api_v1.endpoints import router as api_router
+from app.api.api_v1.endpoints import incidents
+from app.websocket import router as websocket_router
 
-app = FastAPI()
+app = FastAPI(
+    title="🚀 Real-Time Incident Collaboration Platform API",
+    version="0.1.0",
+    description="API for managing incidents with real-time collaboration using FastAPI, PostgreSQL, Redis, and WebSockets."
+)
+
+@app.get("/")
+def read_root():
+    return {"message": "🚀 Real-Time Incident Collaboration Platform API is running."}
 
 @app.on_event("startup")
 async def startup_event():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    print("🚀 API startup complete. Ensure Alembic migrations are applied before starting.")
 
-# CORS (for frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update in prod
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(incidents.router, prefix="/incidents", tags=["Incidents"])
-app.include_router(api_router)
-app.include_router(endpoints.router)
+# ✅ Include incidents API routes
+app.include_router(
+    incidents.router,
+    prefix="/incidents",
+    tags=["incidents"],
+)
 
-@app.websocket("/ws/incidents")
-async def websocket_endpoint(websocket: WebSocket):
+# ✅ Include the websocket router separately
+app.include_router(websocket_router)
+
+# ✅ If you want a test WebSocket echo endpoint, keep this, else remove
+@app.websocket("/ws/echo")
+async def websocket_echo(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:

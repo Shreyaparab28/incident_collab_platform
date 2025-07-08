@@ -1,6 +1,10 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    redis_url: str = "redis://localhost:6379"
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/incident_db"
+    # your other configs...
+
+    class Config:
+        env_file = ".env"
 
 settings = Settings()

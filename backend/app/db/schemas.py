@@ -1,15 +1,17 @@
-# backend/app/db/schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from typing import Optional
+from datetime import datetime
 
 class IncidentBase(BaseModel):
     title: str
-    description: str
+    description: Optional[str] = None
+    status: Optional[str] = "Open"
 
 class IncidentCreate(IncidentBase):
     pass
 
-class Incident(IncidentBase):
+class IncidentResponse(IncidentBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    created_at: datetime
+    created_by: Optional[str]
+    model_config = ConfigDict(from_attributes=True)

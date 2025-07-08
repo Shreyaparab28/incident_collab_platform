@@ -1,26 +1,22 @@
 import os
-
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
-# Use environment variables or defaults for clarity and flexibility
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@db:5432/incident_db")
+# Determine if running inside Docker
+DOCKER_ENV = os.getenv("DOCKER_ENV", "false").lower() == "true"
 
-# Create async engine
+if DOCKER_ENV:
+    DATABASE_URL = "postgresql+asyncpg://postgres:postgres@db:5432/incident_db"
+else:
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/incident_db")
+
+print(f"Using DATABASE_URL: {DATABASE_URL}")
+
 engine = create_async_engine(DATABASE_URL, echo=True)
-
-# Create sessionmaker for AsyncSession
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    expire_on_commit=False,
-    class_=AsyncSession
-)
-
-# Declare base
+async_session = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 
-# Dependency to get DB session for FastAPI routes
-async def get_db():
-    async with AsyncSessionLocal() as session:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
         yield session
