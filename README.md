@@ -141,9 +141,3 @@ npm start
 * [Docker](https://docker.com/)
 
 ---
-
-
-✅ A **GitHub Actions CI/CD workflow** to build and push your images automatically to GHCR on every push to `main`.
-✅ A **clean `docker-compose.yml` for end users** to test with your GHCR images easily.
-
-Let me know whenever you are ready for the next polishing steps for your **portfolio deployment**.
